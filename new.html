@@ -1,0 +1,301 @@
+<!-- File lengkap dengan fitur: Profit, Grafik Bulanan, Rekap Kategori, dan Growth -->
+<!-- NOTE: Grafik menggunakan Chart.js CDN -->
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rekap Keuangan Karya Jelita — Lengkap</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{--bg:#f7f6ff;--card:#fff;--accent:#6b3fa0;--accent-2:#9b6bd1;--danger:#e06a6a}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#fff);padding:24px;color:#222}
+    .wrap{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{margin:0;font-size:20px;color:var(--accent)}
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(99,70,175,0.08)}
+    .grid{display:grid;gap:12px}
+    .cols-3{grid-template-columns:1fr 1fr 160px}
+    label{display:block;font-size:12px;margin-bottom:6px;color:#444}
+    input,select{width:100%;padding:9px;border-radius:8px;border:1px solid #e6e2f2}
+    .actions{display:flex;gap:8px}
+    button{padding:9px 12px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#fff}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid #e6e2f2}
+    .stats{display:flex;gap:12px;margin-top:12px}
+    .stat{flex:1;padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbf8ff);text-align:center}
+    .stat h3{margin:0;font-size:13px;color:#666}
+    .stat p{margin:6px 0 0;font-size:18px;font-weight:700}
+    .chart-card{margin-top:20px;padding:20px;border-radius:14px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.06)}
+    table{width:100%;border-collapse:collapse;margin-top:14px}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid #f1eef8;font-size:13px}
+    .type-in{color:green;font-weight:700}
+    .type-out{color:var(--danger);font-weight:700}
+    .small{font-size:12px;color:#666}
+    .controls{display:flex;gap:8px;align-items:center}
+    .right{margin-left:auto}
+    .empty{padding:20px;text-align:center;color:#777}
+    @media(max-width:760px){.cols-3{grid-template-columns:1fr} .stats{flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Keuangan Karya Jelita — Tracker Lengkap</h1>
+  <div class="small">Dashboard keuangan + profit + grafik + kategori + growth</div>
+</header>
+
+<section class="card">
+  <form id="txForm" class="grid cols-3" onsubmit="return saveTransaction(event)">
+
+    <div>
+      <label for="date">Tanggal</label>
+      <input id="date" type="date" required />
+    </div>
+
+    <div>
+      <label for="desc">Uraian</label>
+      <input id="desc" type="text" placeholder="Nama pelanggan / bahan baku" required />
+    </div>
+
+    <div>
+      <label for="type">Jenis & Nominal</label>
+      <div style="display:flex;gap:8px">
+        <select id="type">
+          <option value="in">Pemasukan</option>
+          <option value="out">Pengeluaran</option>
+        </select>
+        <input id="amount" type="number" step="0.01" placeholder="0.00" required />
+      </div>
+    </div>
+
+    <div>
+      <label for="cat">Kategori</label>
+      <select id="cat" onchange="showOtherCat()">
+        <option value="">-- Pilih Kategori --</option>
+        <option value="bahan baku">Bahan Baku</option>
+        <option value="listrik">Listrik</option>
+        <option value="ongkos seragam">Ongkos Seragam</option>
+        <option value="ongkos kebaya">Ongkos Kebaya</option>
+        <option value="ongkos atasan">Ongkos Atasan</option>
+        <option value="ongkos bawahan">Ongkos Bawahan</option>
+        <option value="ongkos satu set baju">Ongkos Satu Set Baju</option>
+        <option value="ongkos gamis">Ongkos Gamis</option>
+        <option value="ongkos vermak">Ongkos Vermak</option>
+        <option value="ongkos custom">Ongkos Custom</option>
+        <option value="lainnya">Lainnya</option>
+      </select>
+      <input id="otherCat" type="text" placeholder="Kategori lain..." style="display:none;margin-top:8px" />
+    </div>
+
+    <div>
+      <label>&nbsp;</label>
+      <div class="actions">
+        <button type="submit" id="saveBtn">Tambah</button>
+        <button type="button" class="ghost" onclick="resetForm()">Reset</button>
+        <button type="button" class="ghost" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Summary -->
+  <div class="stats">
+    <div class="stat"><h3>Saldo</h3><p id="balance">Rp 0</p></div>
+    <div class="stat"><h3>Pemasukan</h3><p id="totalIn">Rp 0</p></div>
+    <div class="stat"><h3>Pengeluaran</h3><p id="totalOut">Rp 0</p></div>
+    <div class="stat"><h3>Keuntungan</h3><p id="profit">Rp 0</p></div>
+    <div class="stat"><h3>Growth Bulan Ini</h3><p id="growth">0%</p></div>
+  </div>
+</section>
+
+<!-- Grafik Bulanan -->
+<section class="chart-card">
+  <h3>Grafik Keuntungan Bulanan</h3>
+  <canvas id="profitChart" height="100"></canvas>
+</section>
+
+<!-- Rekap Kategori -->
+<section class="chart-card">
+  <h3>Rekap Keuntungan per Kategori</h3>
+  <canvas id="catChart" height="100"></canvas>
+</section>
+
+<!-- History -->
+<section style="margin-top:14px" class="card">
+  <div style="display:flex;align-items:center;gap:10px">
+    <h3 style="margin:0">History Transaksi</h3>
+    <div class="right controls">
+      <input id="search" placeholder="Cari" oninput="renderList()" />
+      <select id="filterType" onchange="renderList()">
+        <option value="all">Semua</option>
+        <option value="in">Pemasukan</option>
+        <option value="out">Pengeluaran</option>
+      </select>
+      <button class="ghost" onclick="clearAll()">Hapus Semua</button>
+    </div>
+  </div>
+  <div id="listWrap"></div>
+</section>
+
+</div>
+
+<script>
+const STORAGE_KEY = 'finance_tracker_v1'
+let transactions = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+let editingId = null
+let profitChart = null
+let catChart = null
+
+function showOtherCat(){
+  const v = document.getElementById("cat").value
+  document.getElementById("otherCat").style.display = v === "lainnya" ? "block" : "none"
+}
+
+function money(x){ return 'Rp ' + (Number(x)||0).toLocaleString('id-ID') }
+function saveStorage(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions)) }
+
+function resetForm(){
+  document.getElementById('txForm').reset();
+  editingId = null;
+  document.getElementById('saveBtn').textContent = 'Tambah'
+}
+
+function saveTransaction(e){
+  e.preventDefault()
+  const date = date.value
+  const desc = desc.value.trim()
+  const type = type.value
+  const amount = Math.abs(Number(amount.value))
+  let cat = cat.value.trim()
+  if(cat === "lainnya") cat = otherCat.value.trim()
+
+  if(!date || !desc || !amount) return alert('Isi data lengkap')
+
+  if(editingId){
+    const idx = transactions.findIndex(t=>t.id===editingId)
+    transactions[idx] = {...transactions[idx], date, desc, type, amount, cat}
+    editingId = null
+    saveBtn.textContent='Tambah'
+  } else {
+    transactions.unshift({ id:Date.now().toString(), date, desc, type, amount, cat })
+  }
+  saveStorage(); resetForm(); renderAll()
+}
+
+function renderSummary(){
+  const totalIn = transactions.filter(t=>t.type==='in').reduce((s,t)=>s+t.amount,0)
+  const totalOut = transactions.filter(t=>t.type==='out').reduce((s,t)=>s+t.amount,0)
+  const balance = totalIn - totalOut
+  const profit = balance
+
+  totalIn.textContent = money(totalIn)
+  totalOut.textContent = money(totalOut)
+  balance.textContent = money(balance)
+  profit.textContent = money(profit)
+
+  // Growth
+  const byMonth = groupByMonth()
+  const months = Object.keys(byMonth)
+  const last = months[months.length-1]
+  const prev = months[months.length-2]
+
+  if(prev){
+    const growthVal = ((byMonth[last] - byMonth[prev]) / byMonth[prev]) * 100
+    growth.textContent = growthVal.toFixed(1) + '%'
+    growth.style.color = growthVal >= 0 ? 'green':'var(--danger)'
+  } else {
+    growth.textContent = '0%'
+  }
+}
+
+function groupByMonth(){
+  const map = {}
+  for(const t of transactions){
+    const m = t.date.slice(0,7)
+    if(!map[m]) map[m]=0
+    map[m] += t.type==='in'? t.amount : -t.amount
+  }
+  return map
+}
+
+function renderCharts(){
+  // Profit per bulan
+  const monthly = groupByMonth()
+  const labels = Object.keys(monthly)
+  const values = Object.values(monthly)
+
+  if(profitChart) profitChart.destroy()
+  profitChart = new Chart(document.getElementById('profitChart'),{
+    type:'bar',
+    data:{labels, datasets:[{label:'Keuntungan', data:values}]} })
+
+  // Per kategori
+  const catMap = {}
+  for(const t of transactions){
+    if(!catMap[t.cat]) catMap[t.cat]=0
+    catMap[t.cat] += t.type==='in'? t.amount : -t.amount
+  }
+
+  if(catChart) catChart.destroy()
+  catChart = new Chart(document.getElementById('catChart'),{
+    type:'bar',
+    data:{labels:Object.keys(catMap), datasets:[{label:'Profit Kategori', data:Object.values(catMap)}]} })
+}
+
+function renderList(){
+  const wrap = document.getElementById('listWrap')
+  const search = document.getElementById('search').value.toLowerCase()
+  const filter = filterType.value
+
+  let list = transactions.slice()
+  if(filter !== 'all') list = list.filter(t=>t.type===filter)
+  if(search) list = list.filter(t => (t.desc + ' ' + (t.cat||'')).toLowerCase().includes(search))
+
+  if(!list.length){ wrap.innerHTML='<div class="empty">Belum ada transaksi</div>'; return }
+
+  let html='<table><thead><tr><th>Tgl</th><th>Uraian</th><th>Kategori</th><th>Jenis</th><th>Nominal</th><th></th></tr></thead><tbody>'
+  for(const t of list){
+    html += `<tr>
+      <td>${t.date}</td>
+      <td>${t.desc}</td>
+      <td>${t.cat}</td>
+      <td class="${t.type==='in'?'type-in':'type-out'}">${t.type==='in'?'Masuk':'Keluar'}</td>
+      <td>${money(t.amount)}</td>
+      <td><button class='ghost' onclick="editTx('${t.id}')">Edit</button> <button class='ghost' onclick="delTx('${t.id}')">Hapus</button></td>
+    </tr>`
+  }
+  html+='</tbody></table>'
+  wrap.innerHTML = html
+}
+
+function editTx(id){
+  const t = transactions.find(x=>x.id===id)
+  if(!t) return
+  date.value = t.date
+  desc.value = t.desc
+  type.value = t.type
+  amount.value = t.amount
+  cat.value = t.cat
+  editingId=id
+  saveBtn.textContent='Simpan'
+  window.scrollTo({top:0,behavior:'smooth'})
+}
+
+function delTx(id){ if(confirm('Hapus?')){ transactions = transactions.filter(t=>t.id!==id); saveStorage(); renderAll() }}
+function clearAll(){ if(confirm('Hapus semua?')){ transactions=[]; saveStorage(); renderAll() }}
+
+function exportCSV(){
+  if(!transactions.length) return alert('Tidak ada data')
+  const header=['id','date','desc','cat','type','amount']
+  const rows=transactions.map(r=>[r.id,r.date,r.desc,r.cat,r.type,r.amount])
+  const csv=[header.join(','),...rows.map(r=>r.join(','))].join('\n')
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob)
+  const a=document.createElement('a'); a.href=url; a.download='transactions.csv'; a.click(); URL.revokeObjectURL(url)
+}
+
+function renderAll(){ renderSummary(); renderList(); renderCharts() }
+renderAll()
+</script>
+
+</body>
+</html>
